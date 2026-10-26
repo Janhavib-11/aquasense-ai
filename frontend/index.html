@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AquaSense AI &mdash; Fish Farm Monitoring</title>
+<meta name="description" content="Real-time water quality monitoring and predictive analytics for fish farms. Live sensor data, dissolved oxygen prediction, and intelligent alerts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   DESIGN TOKENS — clean, professional, no gimmicks
+================================================================ */
+:root {
+  /* Light theme */
+  --bg:          #f8f9fb;
+  --surface:     #ffffff;
+  --surface-2:   #f1f3f6;
+  --border:      #e4e7ed;
+  --border-2:    #d0d5df;
+  --ink:         #111827;
+  --ink-2:       #374151;
+  --muted:       #6b7280;
+  --muted-2:     #9ca3af;
+
+  /* Accent — slate blue, not teal/green */
+  --accent:      #2563eb;
+  --accent-soft: #eff6ff;
+  --accent-mid:  #bfdbfe;
+
+  /* Status */
+  --ok:          #16a34a;
+  --ok-soft:     #f0fdf4;
+  --ok-mid:      #bbf7d0;
+  --warn:        #d97706;
+  --warn-soft:   #fffbeb;
+  --warn-mid:    #fde68a;
+  --danger:      #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-mid:  #fecaca;
+
+  /* Layout */
+  --nav-w:       220px;
+  --radius:      10px;
+  --radius-sm:   6px;
+  --shadow:      0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.06);
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.06);
+}
+
+[data-theme="dark"] {
+  --bg:          #0d1117;
+  --surface:     #161b22;
+  --surface-2:   #21262d;
+  --border:      #30363d;
+  --border-2:    #444c56;
+  --ink:         #e6edf3;
+  --ink-2:       #c9d1d9;
+  --muted:       #8b949e;
+  --muted-2:     #6e7681;
+
+  --accent:      #388bfd;
+  --accent-soft: #0d1f36;
+  --accent-mid:  #1f4d8a;
+
+  --ok:          #3fb950;
+  --ok-soft:     #0a1f0f;
+  --ok-mid:      #1a4223;
+  --warn:        #d29922;
+  --warn-soft:   #1f1a09;
+  --warn-mid:    #3d3310;
+  --danger:      #f85149;
+  --danger-soft: #1f0d0d;
+  --danger-mid:  #4a1b1b;
+
+  --shadow:      0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.4);
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.3);
+}
+
+/* ================================================================
+   RESET
+================================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+h1, h2, h3, p { margin: 0; }
+
+/* ================================================================
+   APP SHELL
+================================================================ */
+.app { display: flex; min-height: 100vh; }
+
+/* ================================================================
+   SIDEBAR
+================================================================ */
+.sidebar {
+  width: var(--nav-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: width .2s;
+  z-index: 10;
+}
+.sidebar.collapsed { width: 52px; }
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .brand-name,
+.sidebar.collapsed .sidebar-section { display: none; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 14px 20px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+.brand-icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+.brand-icon svg { display: block; }
+.brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.brand-name span { color: var(--accent); }
+
+.sidebar-nav { padding: 8px 8px; flex: 1; }
+.sidebar-section {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 8px 4px;
+  margin-top: 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background .12s, color .12s;
+  text-align: left;
+  white-space: nowrap;
+}
+.nav-item svg {
+  width: 16px; height: 16px; flex-shrink: 0;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--ink-2); }
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+[data-theme="dark"] .nav-item.active { background: var(--accent-mid); }
+
+.sidebar-footer {
+  padding: 10px 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ================================================================
+   MAIN
+================================================================ */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.topbar-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+.topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.flex-1 { flex: 1; }
+
+.content { padding: 24px; flex: 1; }
+
+/* ================================================================
+   TOP-BAR BUTTONS
+================================================================ */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: background .12s, color .12s;
+  border: 1px solid transparent;
+}
+.btn-icon svg {
+  width: 15px; height: 15px;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-icon:hover { background: var(--surface-2); color: var(--ink); }
+
+.btn-action {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: border-color .12s, background .12s;
+}
+.btn-action svg {
+  width: 14px; height: 14px;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-action:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  background: var(--accent); color: #fff; border: none;
+  transition: opacity .12s;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  background: var(--surface); color: var(--ink-2);
+  border: 1px solid var(--border);
+  transition: border-color .12s, color .12s;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ================================================================
+   AVATAR
+================================================================ */
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   ALERTS / BANNERS
+================================================================ */
+.alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; border: 1px solid transparent;
+  margin-bottom: 16px;
+}
+.alert svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px;
+  stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.alert.info    { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-mid); }
+.alert.success { background: var(--ok-soft); color: var(--ok); border-color: var(--ok-mid); }
+.alert.warning { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-mid); }
+.alert.error   { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-mid); }
+
+/* ================================================================
+   STATUS BADGES
+================================================================ */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .01em;
+}
+.badge.safe    { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-mid); }
+.badge.unsafe  { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-mid); }
+.badge.warn    { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-mid); }
+.badge.neutral { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.badge.info    { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-mid); }
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* ================================================================
+   GRID / CARDS
+================================================================ */
+.grid { display: grid; gap: 16px; }
+.g-4 { grid-template-columns: repeat(4, 1fr); }
+.g-3 { grid-template-columns: repeat(3, 1fr); }
+.g-2 { grid-template-columns: repeat(2, 1fr); }
+.g-2a { grid-template-columns: 2fr 1fr; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+.card-muted { font-size: 12px; color: var(--muted); }
+
+/* ================================================================
+   METRIC CARDS
+================================================================ */
+.metric-label {
+  font-size: 11.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.metric-value {
+  font-size: 30px; font-weight: 700;
+  letter-spacing: -.5px; color: var(--ink); line-height: 1;
+}
+.metric-unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+.metric-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.metric-spark { margin-top: 10px; }
+
+/* ================================================================
+   RANGE BAR
+================================================================ */
+.range-bar {
+  position: relative; height: 4px;
+  border-radius: 99px; background: var(--border);
+  margin: 8px 0 4px; overflow: visible;
+}
+.range-zone { position: absolute; top: 0; bottom: 0; }
+.range-cursor {
+  position: absolute; top: -4px;
+  width: 3px; height: 12px;
+  border-radius: 2px; background: var(--ink);
+  transform: translateX(-50%);
+  transition: left .5s;
+}
+
+/* ================================================================
+   CHARTS
+================================================================ */
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: auto; display: block; }
+.chart-tooltip {
+  position: absolute; pointer-events: none;
+  background: var(--ink); color: var(--surface);
+  padding: 5px 9px; border-radius: var(--radius-sm);
+  font-size: 12px; white-space: nowrap; display: none; z-index: 10;
+}
+.chart-legend {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 8px; font-size: 12px; color: var(--muted);
+}
+.chart-legend-item { display: flex; align-items: center; gap: 6px; }
+.chart-legend-line { width: 16px; height: 2px; background: var(--accent); border-radius: 1px; }
+.chart-legend-dashed { border-top: 2px dashed var(--warn); width: 16px; }
+
+/* ================================================================
+   ALERT ROWS
+================================================================ */
+.alert-row {
+  display: flex; gap: 12px; padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.alert-row:first-child { border-top: none; }
+.alert-row-body { flex: 1; }
+.alert-row-title { font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.alert-row-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ================================================================
+   TABLE
+================================================================ */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 8px 10px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--border);
+}
+td { padding: 10px 10px; border-bottom: 1px solid var(--border); color: var(--ink-2); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface-2); }
+
+/* ================================================================
+   FORM
+================================================================ */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12.5px; font-weight: 500; color: var(--ink-2); margin-bottom: 5px; }
+.form-input {
+  display: block; width: 100%;
+  padding: 8px 11px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--ink);
+  transition: border-color .12s, box-shadow .12s;
+}
+.form-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.form-error { font-size: 12px; color: var(--danger); margin-top: 4px; min-height: 16px; }
+.form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ================================================================
+   DIVIDER / ROW
+================================================================ */
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.spacer { flex: 1; }
+
+/* ================================================================
+   SPINNER
+================================================================ */
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ================================================================
+   LIVE DOT
+================================================================ */
+.live-dot {
+  display: inline-block; width: 7px; height: 7px;
+  background: var(--ok); border-radius: 50%;
+  animation: blink 2s infinite; margin-right: 5px;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+/* ================================================================
+   TOAST
+================================================================ */
+#toast-rack {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 99;
+}
+.toast {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 14px;
+  background: var(--ink); color: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  animation: slide-up .18s ease;
+  max-width: 320px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.toast.ok      { background: var(--ok);     color: #fff; }
+.toast.warning { background: var(--warn);   color: #fff; }
+.toast.error   { background: var(--danger); color: #fff; }
+@keyframes slide-up { from { transform: translateY(10px); opacity: 0; } }
+
+/* ================================================================
+   LOGIN MODAL
+================================================================ */
+#login-screen {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: grid; place-items: center;
+  z-index: 50; padding: 16px;
+}
+.login-box {
+  width: 100%; max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.login-logo {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 700;
+  color: var(--ink); margin-bottom: 4px;
+}
+.login-logo span { color: var(--accent); }
+
+/* ================================================================
+   TOGGLE SWITCH
+================================================================ */
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  width: 32px; height: 18px; border-radius: 99px;
+  background: var(--border-2); position: relative; transition: background .15s;
+}
+.toggle-track::after {
+  content: ''; position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%; background: #fff;
+  transition: transform .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle input:checked + .toggle-track::after { transform: translateX(14px); }
+
+/* ================================================================
+   STATUS STRIP
+================================================================ */
+.status-strip { display: flex; gap: 2px; margin-top: 8px; }
+.status-strip-cell { flex: 1; height: 18px; border-radius: 3px; }
+.status-strip-cell.ok   { background: var(--ok);   opacity: .7; }
+.status-strip-cell.warn { background: var(--warn);  opacity: .7; }
+.status-strip-cell.bad  { background: var(--danger); opacity: .7; }
+
+/* ================================================================
+   RESPONSIVE
+================================================================ */
+@media (max-width: 1024px) {
+  .g-4 { grid-template-columns: repeat(2, 1fr); }
+  .g-3 { grid-template-columns: repeat(2, 1fr); }
+  .g-2a { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .sidebar { display: none; }
+  .content { padding: 16px; }
+  .g-4, .g-3, .g-2, .g-2a { grid-template-columns: 1fr; }
+  .topbar { padding: 10px 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="brand-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 10.5A6 6 0 0 1 6 13.5C6 10 9 7 12 3z"/></svg>
+      </div>
+      AquaSense <span>AI</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Fish farm water quality monitoring</p>
+    <div class="alert info" style="margin-bottom:16px">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Demo login — enter any valid email and 6+ character password.
+    </div>
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="login-email">Email address</label>
+        <input class="form-input" id="login-email" type="email" autocomplete="email" placeholder="you@farm.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-pw">Password</label>
+        <div class="row" style="gap:6px;flex-wrap:nowrap">
+          <input class="form-input" id="login-pw" type="password" autocomplete="current-password" style="flex:1">
+          <button type="button" id="pw-toggle" class="btn-secondary" style="padding:8px 10px;white-space:nowrap">Show</button>
+        </div>
+      </div>
+      <div class="form-error" id="login-error" role="alert"></div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:6px;justify-content:center">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="#">
+      <div class="brand-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round">
+          <path d="M12 3c3 4 6 7 6 10.5A6 6 0 0 1 6 13.5C6 10 9 7 12 3z"/>
+        </svg>
+      </div>
+      <span class="brand-name">AquaSense <span>AI</span></span>
+    </a>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- injected by JS -->
+    </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" id="logout-btn" style="width:100%;color:var(--muted)">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        <span class="nav-label">Sign out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <button class="btn-icon" id="collapse-btn" aria-label="Toggle sidebar">
+        <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div>
+        <div class="topbar-title" id="topbar-title">Overview</div>
+        <div class="topbar-sub" id="topbar-sub">Waiting for data</div>
+      </div>
+      <div class="spacer"></div>
+
+      <!-- Sync -->
+      <button class="btn-action" id="sync-btn" title="Pull latest reading from ThingSpeak and save to Supabase">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Sync
+      </button>
+
+      <!-- Theme -->
+      <button class="btn-icon" id="theme-btn" aria-label="Toggle dark mode">
+        <svg id="theme-icon-sun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg id="theme-icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+
+      <!-- User -->
+      <div class="avatar" id="user-avatar">A</div>
+    </header>
+
+    <!-- STATUS BANNER -->
+    <div id="status-banner" style="display:none;margin:12px 24px 0"></div>
+
+    <!-- PAGE CONTENT -->
+    <main class="content" id="page-content"></main>
+  </div>
+</div>
+
+<div id="toast-rack" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =================================================================
+   CONFIG
+================================================================= */
+const API = 'http://127.0.0.1:8000';
+
+/* =================================================================
+   NAV PAGES
+================================================================= */
+const NAV = [
+  { id: 'Overview',         icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
+  { id: 'Water Quality',    icon: '<path d="M12 3c3 4 6 7 6 10.5A6 6 0 0 1 6 13.5C6 10 9 7 12 3z"/>' },
+  { id: 'Analytics',        icon: '<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>' },
+  { id: 'Alerts',           icon: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>' },
+  { id: 'Sensors',          icon: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M20.1 4.9a13 13 0 0 1 0 14.2M3.9 19.1a13 13 0 0 1 0-14.2"/>' },
+  { id: 'Manual Entry',     icon: '<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' },
+  { id: 'Settings',         icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>' },
+];
+
+/* =================================================================
+   STATE
+================================================================= */
+let S = {
+  page: 'Overview',
+  user: '',
+  data: { sensors: null, prediction: null, history: null, latest: null, insights: null },
+  thresholds: { t: [25,32], p: [6.5,8.5] },
+  alerts: [],
+  readMap: {},
+  timer: null,
+  lastSync: null,
+};
+
+/* =================================================================
+   UTILS
+================================================================= */
+const $  = (s, c=document) => c.querySelector(s);
+const $$ = (s, c=document) => [...c.querySelectorAll(s)];
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function toast(msg, type='default', ms=3500) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type !== 'default' ? ' ' + type : '');
+  el.textContent = msg;
+  $('#toast-rack').appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'}); }
+  catch { return iso; }
+}
+function fmtRelative(iso) {
+  if (!iso) return '';
+  const s = Math.round((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.round(s/60) + 'm ago';
+  return Math.round(s/3600) + 'h ago';
+}
+
+/* =================================================================
+   API CALLS — all 10 endpoints
+================================================================= */
+async function api(path, opts={}) {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    const b = await r.json().catch(() => ({}));
+    throw new Error(b.detail || 'HTTP ' + r.status);
+  }
+  return r.json();
+}
+
+const apiStatus        = ()     => api('/api/status');                         // 1
+const apiSensors       = ()     => api('/api/sensors');                        // 2
+const apiPrediction    = ()     => api('/api/prediction');                     // 3
+const apiLatest        = ()     => api('/api/readings/latest');                // 4
+const apiHistory       = ()     => api('/api/readings/history');               // 5
+const apiInsights      = ()     => api('/api/insights');                       // 6
+const apiTsLatest      = ()     => api('/api/thingspeak/latest');              // 7
+const apiSync          = ()     => api('/api/thingspeak/sync');                // 8
+const apiSupabaseCheck = ()     => api('/api/supabase/check');                 // 9
+const apiPostReading   = body   => api('/api/readings', {                      // 10
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
+/* =================================================================
+   DATA REFRESH
+================================================================= */
+async function refresh() {
+  try {
+    const status = await apiStatus();
+    showBanner('success', 'API online &mdash; ' + fmtDateTime(status.updated_at));
+
+    const [sensors, prediction, history, latest, insights] = await Promise.allSettled([
+      apiSensors(), apiPrediction(), apiHistory(), apiLatest(), apiInsights()
+    ]);
+
+    if (sensors.status    === 'fulfilled') S.data.sensors    = sensors.value;
+    if (prediction.status === 'fulfilled') S.data.prediction = prediction.value;
+    if (history.status    === 'fulfilled') S.data.history    = history.value;
+    if (latest.status     === 'fulfilled') S.data.latest     = latest.value;
+    if (insights.status   === 'fulfilled') S.data.insights   = insights.value;
+
+    computeAlerts();
+
+    const lr = S.data.latest?.data?.recorded_at;
+    $('#topbar-sub').innerHTML = '<span class="live-dot"></span>Live &mdash; last reading ' + (fmtRelative(lr) || '—');
+    render();
+  } catch (err) {
+    showBanner('error', 'Backend offline — ' + esc(err.message));
+    $('#topbar-sub').textContent = 'Cannot reach backend at ' + API;
+  }
+}
+
+function showBanner(type, html) {
+  const b = $('#status-banner');
+  b.className = 'alert ' + type;
+  b.innerHTML = html;
+  b.style.display = 'flex';
+  clearTimeout(b._t);
+  if (type === 'success') b._t = setTimeout(() => { b.style.display='none'; }, 5000);
+}
+
+function computeAlerts() {
+  const list = [];
+  const s = S.data.sensors, pr = S.data.prediction;
+  const now = fmtDateTime(new Date().toISOString());
+  const [tlo, thi] = S.thresholds.t;
+  const [plo, phi] = S.thresholds.p;
+
+  if (s?.temperature !== null && s?.temperature !== undefined && s.temperature_status === 'NOT SAFE')
+    list.push({ id:'al-temp', sev:'unsafe', label:'Temperature', value: s.temperature.toFixed(1)+'°C',
+      detail: 'Outside safe range '+tlo+'–'+thi+'°C', action: 'Inspect heating/cooling system.', time: now });
+
+  if (s?.ph !== null && s?.ph !== undefined && s.ph_status === 'NOT SAFE')
+    list.push({ id:'al-ph', sev:'unsafe', label:'pH Level', value: s.ph.toFixed(2),
+      detail: 'Outside safe range '+plo+'–'+phi, action: 'Apply pH correction agent.', time: now });
+
+  if (pr?.predicted_do !== null && pr?.predicted_do !== undefined && pr.predicted_do < 5)
+    list.push({ id:'al-do', sev:'warn', label:'Dissolved Oxygen', value: pr.predicted_do.toFixed(2)+' mg/L',
+      detail: 'Below recommended minimum of 5 mg/L', action: 'Increase aeration; verify fish stock density.', time: now });
+
+  S.alerts = list;
+}
+
+/* =================================================================
+   SYNC BUTTON
+================================================================= */
+$('#sync-btn').onclick = async () => {
+  const btn = $('#sync-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Syncing…';
+  try {
+    const r = await apiSync();
+    S.lastSync = new Date().toISOString();
+    toast('Synced — entry #' + (r.data?.[0]?.thingspeak_entry_id ?? '?'), 'ok');
+    await refresh();
+  } catch (err) {
+    toast('Sync failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = syncIcon() + ' Sync';
+  }
+};
+function syncIcon() {
+  return '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+}
+
+/* =================================================================
+   CHART ENGINE
+================================================================= */
+function buildChart(rows, field, label, unit, lo, hi) {
+  if (!rows?.length) return '<div style="height:140px;display:grid;place-items:center;color:var(--muted);font-size:13px">No data — sync ThingSpeak to populate</div>';
+  const vals = rows.map(r => parseFloat(r[field])).filter(isFinite);
+  if (!vals.length) return '<div style="height:140px;display:grid;place-items:center;color:var(--muted)">No data</div>';
+
+  const W=600, H=180, PL=42, PR=10, PT=10, PB=24;
+  let mn = Math.min(...vals), mx = Math.max(...vals);
+  if (lo !== undefined) mn = Math.min(mn, lo);
+  if (hi !== undefined) mx = Math.max(mx, hi);
+  const pad = Math.max((mx-mn)*0.12, 0.3);
+  mn -= pad; mx += pad;
+
+  const Xp = i => PL + (i/(rows.length-1||1))*(W-PL-PR);
+  const Yp = v => PT + (1-(v-mn)/(mx-mn))*(H-PT-PB);
+
+  let g = '';
+  // Grid lines
+  for (let i=0; i<=4; i++) {
+    const v = mn + (mx-mn)*i/4;
+    const y = Yp(v).toFixed(1);
+    g += `<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-dasharray="3 3"/>`;
+    g += `<text x="${PL-5}" y="${parseFloat(y)+4}" text-anchor="end" font-size="10" fill="var(--muted)">${v.toFixed(field==='ph'?1:1)}</text>`;
+  }
+  // Threshold lines
+  if (lo !== undefined && lo > mn && lo < mx)
+    g += `<line x1="${PL}" x2="${W-PR}" y1="${Yp(lo).toFixed(1)}" y2="${Yp(lo).toFixed(1)}" stroke="var(--warn)" stroke-dasharray="4 4" stroke-width="1.5"/>`;
+  if (hi !== undefined && hi > mn && hi < mx)
+    g += `<line x1="${PL}" x2="${W-PR}" y1="${Yp(hi).toFixed(1)}" y2="${Yp(hi).toFixed(1)}" stroke="var(--warn)" stroke-dasharray="4 4" stroke-width="1.5"/>`;
+
+  // Area fill
+  const pts = rows.map((r, i) => ({ x: Xp(i), y: Yp(parseFloat(r[field]) || mn), v: parseFloat(r[field]||0) }));
+  const pline = pts.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('');
+  const pfill = pline + ` L${Xp(rows.length-1).toFixed(1)} ${H-PB} L${PL} ${H-PB}Z`;
+  const gid = 'g' + field + Math.random().toString(36).slice(2,6);
+
+  g += `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="var(--accent)" stop-opacity=".18"/>
+    <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
+  </linearGradient></defs>`;
+  g += `<path d="${pfill}" fill="url(#${gid})"/>`;
+  g += `<path d="${pline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // Dots
+  pts.forEach(p => {
+    g += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`;
+  });
+
+  // X labels
+  const first = rows[0]?.recorded_at, last = rows[rows.length-1]?.recorded_at;
+  g += `<text x="${PL}" y="${H-8}" font-size="10" fill="var(--muted)">${fmtDateTime(first).split(',')[0]}</text>`;
+  g += `<text x="${W-PR}" y="${H-8}" font-size="10" fill="var(--muted)" text-anchor="end">${fmtDateTime(last).split(',')[0]}</text>`;
+
+  const ptsData = pts.map((p,i) => ({ x: p.x, v: p.v.toFixed(2)+' '+unit, t: rows[i]?.recorded_at }));
+  return `<div class="chart-wrap" data-pts='${JSON.stringify(ptsData)}'>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label} chart">${g}</svg>
+    <div class="chart-tooltip"></div>
+  </div>`;
+}
+
+function buildSparkline(rows, field) {
+  if (!rows?.length) return '';
+  const vals = rows.map(r => parseFloat(r[field])).filter(isFinite);
+  if (vals.length < 2) return '';
+  const mn = Math.min(...vals), mx = Math.max(...vals), W=100, H=30;
+  const pts = vals.map((v,i) => `${(i/(vals.length-1))*W},${H - ((v-mn)/((mx-mn)||1)) * (H-3) - 1}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="30" aria-hidden="true">
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* =================================================================
+   BADGE / RANGE-BAR HELPERS
+================================================================= */
+function badge(cls, text) { return `<span class="badge ${cls}">${text}</span>`; }
+function sensorBadge(statusStr) {
+  if (!statusStr) return badge('neutral','—');
+  return statusStr === 'SAFE' ? badge('safe','Safe') : badge('unsafe','Not safe');
+}
+function doBadge(val) {
+  if (val === null || val === undefined) return badge('neutral','—');
+  if (val >= 7) return badge('safe','Optimal');
+  if (val >= 5) return badge('warn','Low');
+  return badge('unsafe','Critical');
+}
+function rangeBar(val, lo, hi) {
+  if (val === null || val === undefined) return '';
+  const m = (hi-lo)*0.4, vmin = lo-m, vmax = hi+m;
+  const pc = v => Math.max(0, Math.min(100, (v-vmin)/(vmax-vmin)*100));
+  const zones = [
+    [vmin, lo, 'var(--danger)', '.3'],
+    [lo,   hi, 'var(--ok)',     '.3'],
+    [hi, vmax, 'var(--danger)', '.3'],
+  ];
+  const zh = zones.map(([a,b,c,op]) =>
+    `<div class="range-zone" style="left:${pc(a).toFixed(1)}%;width:${(pc(b)-pc(a)).toFixed(1)}%;background:${c};opacity:${op}"></div>`
+  ).join('');
+  return `<div class="range-bar" aria-hidden="true">${zh}<div class="range-cursor" style="left:${pc(val).toFixed(1)}%"></div></div>`;
+}
+
+/* =================================================================
+   PAGE RENDERERS
+================================================================= */
+
+/* ─── OVERVIEW ─── */
+function pgOverview() {
+  const s = S.data.sensors, pr = S.data.prediction;
+  const hist = S.data.history?.data || [];
+  const lat = S.data.latest?.data;
+  const [tlo, thi] = S.thresholds.t;
+  const [plo, phi] = S.thresholds.p;
+  const dash = '<span style="font-size:28px;color:var(--muted)">—</span>';
+
+  return `
+<div class="grid g-4" style="margin-bottom:18px">
+
+  <!-- Temperature -->
+  <div class="card">
+    <div class="metric-label">Temperature ${s ? sensorBadge(s.temperature_status) : badge('neutral','Waiting')}</div>
+    <div class="metric-value">${s?.temperature != null ? s.temperature.toFixed(1) : dash}<span class="metric-unit">°C</span></div>
+    <div class="metric-sub">Safe range ${tlo}–${thi} °C</div>
+    ${s?.temperature != null ? rangeBar(s.temperature, tlo, thi) : ''}
+    <div class="metric-spark">${buildSparkline(hist, 'temperature')}</div>
+  </div>
+
+  <!-- pH -->
+  <div class="card">
+    <div class="metric-label">pH Level ${s ? sensorBadge(s.ph_status) : badge('neutral','Waiting')}</div>
+    <div class="metric-value">${s?.ph != null ? s.ph.toFixed(2) : dash}<span class="metric-unit">pH</span></div>
+    <div class="metric-sub">Safe range ${plo}–${phi}</div>
+    ${s?.ph != null ? rangeBar(s.ph, plo, phi) : ''}
+    <div class="metric-spark">${buildSparkline(hist, 'ph')}</div>
+  </div>
+
+  <!-- DO -->
+  <div class="card">
+    <div class="metric-label">Dissolved Oxygen ${pr ? doBadge(pr.predicted_do) : badge('neutral','Waiting')}</div>
+    <div class="metric-value">${pr?.predicted_do != null ? pr.predicted_do.toFixed(2) : dash}<span class="metric-unit">mg/L</span></div>
+    <div class="metric-sub">${pr?.source || 'ESP32 ML model via ThingSpeak'}</div>
+    <div class="metric-spark">${buildSparkline(hist, 'predicted_do')}</div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="card">
+    <div class="metric-label">Active Alerts ${badge(S.alerts.length === 0 ? 'safe' : 'unsafe', S.alerts.length + ' open')}</div>
+    <div class="metric-value" style="font-size:38px;margin-top:4px">${S.alerts.length === 0 ? '✓' : '⚠'}</div>
+    <div class="metric-sub">${S.alerts.length === 0 ? 'All parameters within range' : S.alerts.map(a => a.label).join(', ')}</div>
+    <div style="margin-top:10px">
+      ${S.alerts.slice(0,2).map(a => `<div style="font-size:12px;color:var(--${a.sev==='unsafe'?'danger':'warn'});margin-bottom:3px">● ${a.label}</div>`).join('')}
+    </div>
+  </div>
+</div>
+
+<div class="grid g-2a">
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Temperature History</span>
+      <span class="card-muted">${hist.length} readings</span>
+    </div>
+    ${buildChart(hist, 'temperature', 'Temperature', '°C', tlo, thi)}
+    <div class="chart-legend">
+      <div class="chart-legend-item"><div class="chart-legend-line"></div><span>Temperature °C</span></div>
+      <div class="chart-legend-item"><div class="chart-legend-dashed"></div><span>Thresholds</span></div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <!-- Insights -->
+    <div class="card" style="flex:1">
+      <div class="card-header"><span class="card-title">Insights</span>${badge('info','Live')}</div>
+      ${S.data.insights
+        ? S.data.insights.insights.map(i => `<p style="font-size:12.5px;color:var(--ink-2);margin-bottom:6px;line-height:1.5">• ${esc(i)}</p>`).join('')
+        : '<p style="font-size:12.5px;color:var(--muted)">Start the backend and sync to see insights.</p>'
+      }
+    </div>
+
+    <!-- Last sync -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Last Reading</span></div>
+      <div style="font-size:13px;color:var(--ink-2)">${fmtDateTime(lat?.recorded_at)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px">ThingSpeak entry #${lat?.thingspeak_entry_id ?? '—'}</div>
+    </div>
+  </div>
+</div>`;
+}
+
+/* ─── WATER QUALITY ─── */
+function pgWaterQuality() {
+  const s = S.data.sensors, pr = S.data.prediction;
+  const hist = S.data.history?.data || [];
+  const [tlo, thi] = S.thresholds.t;
+  const [plo, phi] = S.thresholds.p;
+  const allOk = s ? (s.temperature_status === 'SAFE' && s.ph_status === 'SAFE') : null;
+
+  return `
+<div class="card" style="margin-bottom:16px">
+  <div class="row">
+    <h2 style="font-size:14px;font-weight:600;color:var(--ink-2)">Overall Status</h2>
+    ${allOk === null ? badge('neutral','Waiting') : allOk ? badge('safe','All Safe') : badge('unsafe','Attention Required')}
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin-top:6px">
+    ${allOk === false ? 'One or more parameters are outside configured safe ranges.' :
+      allOk ? 'All monitored parameters are within safe ranges.' : 'Waiting for backend data. Start uvicorn and click Sync.'}
+  </p>
+</div>
+
+<div class="grid g-3" style="margin-bottom:16px">
+  <div class="card">
+    <div class="metric-label">Temperature ${s ? sensorBadge(s.temperature_status) : badge('neutral','—')}</div>
+    <div class="metric-value">${s?.temperature?.toFixed(1) ?? '—'}<span class="metric-unit">°C</span></div>
+    ${s?.temperature != null ? rangeBar(s.temperature, tlo, thi) : ''}
+    <div class="metric-sub">Range ${tlo}–${thi} °C</div>
+    <div class="metric-spark">${buildSparkline(hist,'temperature')}</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">pH Level ${s ? sensorBadge(s.ph_status) : badge('neutral','—')}</div>
+    <div class="metric-value">${s?.ph?.toFixed(2) ?? '—'}<span class="metric-unit">pH</span></div>
+    ${s?.ph != null ? rangeBar(s.ph, plo, phi) : ''}
+    <div class="metric-sub">Range ${plo}–${phi}</div>
+    <div class="metric-spark">${buildSparkline(hist,'ph')}</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">Dissolved Oxygen ${pr ? doBadge(pr.predicted_do) : badge('neutral','—')}</div>
+    <div class="metric-value">${pr?.predicted_do?.toFixed(2) ?? '—'}<span class="metric-unit">mg/L</span></div>
+    <div class="metric-sub">Source: ${pr?.source || 'ESP32 ML Model'}</div>
+    ${pr?.recorded_at ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">Updated ${fmtRelative(pr.recorded_at)}</div>` : ''}
+    <div class="metric-spark">${buildSparkline(hist,'predicted_do')}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Parameter Reference</span></div>
+  <table>
+    <thead><tr><th>Parameter</th><th>Safe Range</th><th>Current</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Temperature</td><td>${tlo}–${thi} °C</td><td>${s?.temperature?.toFixed(1) ?? '—'} °C</td><td>${s ? sensorBadge(s.temperature_status) : '—'}</td></tr>
+      <tr><td>pH Level</td><td>${plo}–${phi}</td><td>${s?.ph?.toFixed(2) ?? '—'}</td><td>${s ? sensorBadge(s.ph_status) : '—'}</td></tr>
+      <tr><td>Dissolved Oxygen</td><td>≥ 5 mg/L (optimal ≥ 7)</td><td>${pr?.predicted_do?.toFixed(2) ?? '—'} mg/L</td><td>${pr ? doBadge(pr.predicted_do) : '—'}</td></tr>
+    </tbody>
+  </table>
+</div>`;
+}
+
+/* ─── ANALYTICS ─── */
+function pgAnalytics() {
+  const hist = S.data.history?.data || [];
+  const pr = S.data.prediction;
+  const [tlo, thi] = S.thresholds.t;
+  const [plo, phi] = S.thresholds.p;
+  return `
+<div class="row" style="margin-bottom:14px">
+  <span style="font-size:13px;color:var(--muted)">${hist.length} readings &mdash; GET /api/readings/history</span>
+  <div class="spacer"></div>
+  ${S.lastSync ? `<span style="font-size:12px;color:var(--muted)">Last sync ${fmtRelative(S.lastSync)}</span>` : ''}
+</div>
+
+<div class="grid g-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Temperature</span>${badge(hist.length?'info':'neutral', hist.length+' pts')}</div>
+    ${buildChart(hist,'temperature','Temperature','°C',tlo,thi)}
+    <div class="chart-legend"><div class="chart-legend-item"><div class="chart-legend-line"></div><span>Temp °C</span></div><div class="chart-legend-item"><div class="chart-legend-dashed"></div><span>${tlo}–${thi}°C</span></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">pH Level</span>${badge(hist.length?'info':'neutral', hist.length+' pts')}</div>
+    ${buildChart(hist,'ph','pH','',plo,phi)}
+    <div class="chart-legend"><div class="chart-legend-item"><div class="chart-legend-line"></div><span>pH</span></div><div class="chart-legend-item"><div class="chart-legend-dashed"></div><span>${plo}–${phi}</span></div></div>
+  </div>
+</div>
+
+<div class="grid g-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Dissolved Oxygen (Predicted)</span></div>
+    ${buildChart(hist,'predicted_do','DO','mg/L',5,10)}
+    <div class="chart-legend"><div class="chart-legend-item"><div class="chart-legend-line"></div><span>DO mg/L</span></div><div class="chart-legend-item"><div class="chart-legend-dashed"></div><span>5 mg/L min</span></div></div>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="card-header"><span class="card-title">ML Prediction Output</span>${badge('info','GET /api/prediction')}</div>
+    <div>
+      <div class="metric-label" style="margin-bottom:6px">Dissolved Oxygen</div>
+      <div class="metric-value">${pr?.predicted_do?.toFixed(2) ?? '—'}<span class="metric-unit">mg/L</span></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--muted)">Source: ${pr?.source ?? '—'}</div>
+    <div style="font-size:12.5px;color:var(--muted)">Recorded: ${fmtDateTime(pr?.recorded_at)}</div>
+    ${pr ? doBadge(pr.predicted_do) : ''}
+    <div class="divider"></div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6">The DO value is predicted by a regression model running on the ESP32. It is published to ThingSpeak as field3 and synced to Supabase on each Sync.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="card-header"><span class="card-title">Insights</span>${badge('info','GET /api/insights')}</div>
+  ${S.data.insights
+    ? S.data.insights.insights.map(i => `<p style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:6px">• ${esc(i)}</p>`).join('')
+    : '<p style="font-size:13px;color:var(--muted)">Waiting for backend…</p>'}
+</div>`;
+}
+
+/* ─── ALERTS ─── */
+function pgAlerts() {
+  return `
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header">
+    <span class="card-title">Active Alerts</span>
+    <span style="font-size:12px;color:var(--muted)">${S.alerts.length} alert${S.alerts.length !== 1 ? 's' : ''}</span>
+  </div>
+  ${S.alerts.length === 0
+    ? '<div style="padding:24px 0;text-align:center;color:var(--muted);font-size:13px">No active alerts. All parameters are within safe ranges.</div>'
+    : S.alerts.map(a => `
+      <div class="alert-row ${S.readMap[a.id] ? '' : 'unread'}">
+        ${badge(a.sev, a.sev === 'unsafe' ? 'Critical' : 'Warning')}
+        <div class="alert-row-body">
+          <div class="alert-row-title">${esc(a.label)}: ${esc(a.value)}</div>
+          <div class="alert-row-meta">${esc(a.detail)} &middot; ${esc(a.time)}</div>
+          <div class="alert-row-meta">Recommended action: ${esc(a.action)}</div>
+        </div>
+        <button class="btn-secondary" onclick="toggleRead('${a.id}')" style="white-space:nowrap;font-size:12px;padding:5px 10px">
+          ${S.readMap[a.id] ? '✓ Read' : 'Mark read'}
+        </button>
+      </div>`).join('')
+  }
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">ThingSpeak Raw Feed</span>
+    ${badge('info','GET /api/thingspeak/latest')}
+  </div>
+  <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Fetch the latest reading directly from ThingSpeak (not persisted to Supabase).</p>
+  <button class="btn-secondary" id="ts-btn" onclick="loadTsLatest()">Fetch from ThingSpeak</button>
+  <div id="ts-output" style="margin-top:14px"></div>
+</div>`;
+}
+window.toggleRead = id => { S.readMap[id] = !S.readMap[id]; render(); };
+window.loadTsLatest = async () => {
+  const btn = $('#ts-btn'), out = $('#ts-output');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    const d = await apiTsLatest();
+    out.innerHTML = `<table>
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Entry ID</td><td>${esc(d.thingspeak_entry_id)}</td></tr>
+        <tr><td>Recorded At</td><td>${fmtDateTime(d.recorded_at)}</td></tr>
+        <tr><td>Temperature</td><td>${(+d.temperature).toFixed(2)} °C</td></tr>
+        <tr><td>pH</td><td>${(+d.ph).toFixed(2)}</td></tr>
+        <tr><td>Predicted DO</td><td>${(+d.predicted_do).toFixed(2)} mg/L</td></tr>
+      </tbody>
+    </table>`;
+    toast('ThingSpeak data loaded', 'ok');
+  } catch (err) {
+    out.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+  } finally { btn.disabled = false; btn.textContent = 'Fetch from ThingSpeak'; }
+};
+
+/* ─── SENSORS ─── */
+function pgSensors() {
+  const s = S.data.sensors, lat = S.data.latest?.data, pr = S.data.prediction;
+  return `
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header"><span class="card-title">Sensor Status</span>${badge('info','GET /api/sensors')}</div>
+  <table>
+    <thead><tr><th>Sensor</th><th>Source</th><th>Status</th><th>Last Value</th><th>Updated</th></tr></thead>
+    <tbody>
+      <tr><td>Temperature</td><td>ESP32 → ThingSpeak field1</td><td>${s ? badge('safe','Live') : badge('neutral','Waiting')}</td><td>${s?.temperature?.toFixed(2) ?? '—'} °C</td><td>${fmtRelative(lat?.recorded_at)||'—'}</td></tr>
+      <tr><td>pH</td><td>ESP32 → ThingSpeak field2</td><td>${s ? badge('safe','Live') : badge('neutral','Waiting')}</td><td>${s?.ph?.toFixed(2) ?? '—'}</td><td>${fmtRelative(lat?.recorded_at)||'—'}</td></tr>
+      <tr><td>Dissolved Oxygen (ML)</td><td>ESP32 ML → ThingSpeak field3</td><td>${pr ? badge('safe','Live') : badge('neutral','Waiting')}</td><td>${pr?.predicted_do?.toFixed(2) ?? '—'} mg/L</td><td>${fmtRelative(pr?.recorded_at)||'—'}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header"><span class="card-title">Backend Health</span>${badge('info','GET /api/supabase/check')}</div>
+  <button class="btn-secondary" id="health-btn" onclick="runHealth()">Run Health Check</button>
+  <div id="health-output" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Latest Stored Reading</span>${badge('info','GET /api/readings/latest')}</div>
+  ${lat
+    ? `<table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Row ID</td><td>${esc(lat.id)}</td></tr>
+          <tr><td>ThingSpeak Entry</td><td>${esc(lat.thingspeak_entry_id ?? '—')}</td></tr>
+          <tr><td>Recorded At</td><td>${fmtDateTime(lat.recorded_at)}</td></tr>
+          <tr><td>Temperature</td><td>${(+lat.temperature).toFixed(2)} °C</td></tr>
+          <tr><td>pH</td><td>${(+lat.ph).toFixed(2)}</td></tr>
+          <tr><td>Predicted DO</td><td>${(+lat.predicted_do).toFixed(2)} mg/L</td></tr>
+        </tbody>
+      </table>`
+    : '<p style="font-size:13px;color:var(--muted)">No data yet — click Sync to fetch from ThingSpeak.</p>'
+  }
+</div>`;
+}
+window.runHealth = async () => {
+  const btn = $('#health-btn'), out = $('#health-output');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const r = await apiSupabaseCheck();
+    out.innerHTML = `<div class="alert success">${esc(r.message)} — ${r.rows_found} row(s) found.</div>`;
+    toast('Health check passed', 'ok');
+  } catch (err) {
+    out.innerHTML = `<div class="alert error">Check failed: ${esc(err.message)}</div>`;
+    toast('Health check failed', 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Run Health Check'; }
+};
+
+/* ─── MANUAL ENTRY ─── */
+function pgManual() {
+  return `
+<div class="grid g-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Submit Manual Reading</span>${badge('info','POST /api/readings')}</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Saved directly to Supabase. Manual entries have no ThingSpeak entry ID.</p>
+    <form id="manual-form" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="m-temp">Temperature (°C)</label>
+        <input class="form-input" id="m-temp" type="number" step="0.1" min="-5" max="60" placeholder="e.g. 28.5" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="m-ph">pH Level</label>
+        <input class="form-input" id="m-ph" type="number" step="0.01" min="0" max="14" placeholder="e.g. 7.2" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="m-do">Predicted DO (mg/L)</label>
+        <input class="form-input" id="m-do" type="number" step="0.01" min="0" max="30" placeholder="e.g. 7.5" required>
+      </div>
+      <div class="form-error" id="m-err"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn-primary" type="submit" id="m-submit">Save Reading</button>
+        <button class="btn-secondary" type="reset">Clear</button>
+      </div>
+    </form>
+    <div id="m-result" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Validation Rules</span></div>
+    <table>
+      <thead><tr><th>Field</th><th>Valid Range</th></tr></thead>
+      <tbody>
+        <tr><td>Temperature</td><td>−5 to 60 °C</td></tr>
+        <tr><td>pH</td><td>0 to 14</td></tr>
+        <tr><td>Dissolved Oxygen</td><td>0 to 30 mg/L</td></tr>
+      </tbody>
+    </table>
+    <div class="divider"></div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.6">All validation is enforced server-side via Pydantic. Rejected readings return a 422 with field-level error details.</p>
+  </div>
+</div>`;
+}
+function wireManual() {
+  const f = $('#manual-form');
+  if (!f || f._w) return; f._w = true;
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const t = parseFloat($('#m-temp').value);
+    const p = parseFloat($('#m-ph').value);
+    const d = parseFloat($('#m-do').value);
+    const err = $('#m-err');
+    if ([t,p,d].some(isNaN)) { err.textContent='All fields are required.'; return; }
+    err.textContent='';
+    const btn = $('#m-submit'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+      const r = await apiPostReading({ temperature:t, ph:p, predicted_do:d });
+      $('#m-result').innerHTML = `<div class="alert success">${esc(r.message)}</div>`;
+      f.reset(); toast('Reading saved', 'ok'); await refresh();
+    } catch (err2) {
+      $('#m-result').innerHTML = `<div class="alert error">${esc(err2.message)}</div>`;
+    } finally { btn.disabled=false; btn.textContent='Save Reading'; }
+  };
+}
+
+/* ─── SETTINGS ─── */
+function pgSettings() {
+  const [tlo,thi] = S.thresholds.t, [plo,phi] = S.thresholds.p;
+  return `
+<div class="grid g-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Alert Thresholds</span></div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Session-only. Adjusts SAFE/NOT SAFE classification and alert generation.</p>
+    <form id="thresh-form" novalidate>
+      <div class="row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="t-lo">Temperature min (°C)</label>
+          <input class="form-input" id="t-lo" type="number" step="any" value="${tlo}">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="t-hi">Temperature max (°C)</label>
+          <input class="form-input" id="t-hi" type="number" step="any" value="${thi}">
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="p-lo">pH min</label>
+          <input class="form-input" id="p-lo" type="number" step="any" value="${plo}">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="p-hi">pH max</label>
+          <input class="form-input" id="p-hi" type="number" step="any" value="${phi}">
+        </div>
+      </div>
+      <div class="form-error" id="th-err"></div>
+      <button class="btn-primary" type="submit">Apply</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Backend Connection</span></div>
+    <div class="form-group">
+      <label class="form-label">API Base URL</label>
+      <input class="form-input" value="${esc(API)}" readonly>
+      <p class="form-hint">Edit <code>const API</code> at the top of index.html to change.</p>
+    </div>
+    <button class="btn-secondary" onclick="pingBackend()">Test Connection</button>
+    <div id="conn-result" style="margin-top:10px"></div>
+  </div>
+</div>`;
+}
+function wireSettings() {
+  const f = $('#thresh-form'); if (!f||f._w) return; f._w=true;
+  f.onsubmit = e => {
+    e.preventDefault();
+    const tlo=parseFloat($('#t-lo').value),thi=parseFloat($('#t-hi').value);
+    const plo=parseFloat($('#p-lo').value),phi=parseFloat($('#p-hi').value);
+    if ([tlo,thi,plo,phi].some(isNaN)||tlo>=thi||plo>=phi){$('#th-err').textContent='Min must be less than max.';return;}
+    $('#th-err').textContent='';
+    S.thresholds.t=[tlo,thi]; S.thresholds.p=[plo,phi];
+    computeAlerts(); toast('Thresholds updated','ok'); render();
+  };
+}
+window.pingBackend = async () => {
+  const out=$('#conn-result'); out.innerHTML='<span class="spinner"></span>';
+  try { const r=await apiStatus(); out.innerHTML=`<div class="alert success">Online — ${fmtDateTime(r.updated_at)}</div>`; }
+  catch(err) { out.innerHTML=`<div class="alert error">${esc(err.message)}</div>`; }
+};
+
+/* =================================================================
+   RENDER
+================================================================= */
+const RENDERERS = {
+  'Overview':      pgOverview,
+  'Water Quality': pgWaterQuality,
+  'Analytics':     pgAnalytics,
+  'Alerts':        pgAlerts,
+  'Sensors':       pgSensors,
+  'Manual Entry':  pgManual,
+  'Settings':      pgSettings,
+};
+
+function render() {
+  $('#topbar-title').textContent = S.page;
+  const fn = RENDERERS[S.page];
+  if (fn) $('#page-content').innerHTML = fn();
+  wireManual();
+  wireSettings();
+  wireTips();
+  $$('.nav-item[data-page]').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === S.page);
+  });
+}
+
+/* =================================================================
+   TOOLTIP WIRING
+================================================================= */
+function wireTips() {
+  $$('.chart-wrap').forEach(el => {
+    const svg = el.querySelector('svg'), tip = el.querySelector('.chart-tooltip');
+    const raw = el.dataset.pts;
+    if (!svg||!tip||!raw) return;
+    const pts = JSON.parse(raw);
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect();
+      const fx = (e.clientX-r.left)/r.width*600;
+      let best=null,bd=1e9;
+      pts.forEach(p=>{const d=Math.abs(p.x-fx);if(d<bd){bd=d;best=p;}});
+      if (!best) return;
+      tip.style.display='block';
+      tip.textContent = best.v + ' · ' + fmtDateTime(best.t);
+      tip.style.left = Math.min(best.x/600*r.width, r.width-200)+'px';
+      tip.style.top = '4px';
+    });
+    svg.addEventListener('pointerleave', () => { tip.style.display='none'; });
+  });
+}
+
+/* =================================================================
+   NAV BUILD
+================================================================= */
+function buildNav() {
+  const nav = $('#sidebar-nav');
+  NAV.forEach(({ id, icon }) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.dataset.page = id;
+    btn.innerHTML = `<svg viewBox="0 0 24 24">${icon}</svg><span class="nav-label">${id}</span>`;
+    btn.onclick = () => { S.page = id; render(); };
+    nav.appendChild(btn);
+  });
+}
+
+/* =================================================================
+   HEADER CONTROLS
+================================================================= */
+$('#collapse-btn').onclick = () => {
+  $('#sidebar').classList.toggle('collapsed');
+};
+
+// Theme
+const root = document.documentElement;
+function applyTheme(dark) {
+  root.dataset.theme = dark ? 'dark' : 'light';
+  $('#theme-icon-sun').style.display = dark ? '' : 'none';
+  $('#theme-icon-moon').style.display = dark ? 'none' : '';
+}
+const prefersDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+applyTheme(prefersDark);
+$('#theme-btn').onclick = () => applyTheme(root.dataset.theme !== 'dark');
+
+$('#pw-toggle').onclick = () => {
+  const i = $('#login-pw'), show = i.type==='password';
+  i.type = show ? 'text' : 'password';
+  $('#pw-toggle').textContent = show ? 'Hide' : 'Show';
+};
+
+$('#logout-btn').onclick = () => {
+  clearInterval(S.timer); S.timer=null;
+  $('#login-screen').style.display='grid';
+};
+
+/* =================================================================
+   LOGIN
+================================================================= */
+$('#login-form').onsubmit = e => {
+  e.preventDefault();
+  const em = $('#login-email').value.trim();
+  const pw = $('#login-pw').value;
+  const err = $('#login-error');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){err.textContent='Enter a valid email.';return;}
+  if (pw.length < 6){err.textContent='Password must be at least 6 characters.';return;}
+  err.textContent='';
+  S.user = em;
+  $('#user-avatar').textContent = em[0].toUpperCase();
+  $('#login-screen').style.display = 'none';
+  refresh();
+  S.timer = setInterval(refresh, 60000);
+};
+
+/* =================================================================
+   BOOT
+================================================================= */
+buildNav();
+render();
+</script>
+</body>
+</html>
